@@ -393,15 +393,88 @@ export const knowledgeBase: KnowledgeItem[] = [
 
 export const defaultResponse = "Ask about me.";
 
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/whats/g, 'what is')
+    .replace(/wheres/g, 'where is')
+    .replace(/hows/g, 'how is')
+    .replace(/youre/g, 'you are')
+    .replace(/im/g, 'i am')
+    .replace(/dont/g, 'do not')
+    .replace(/didnt/g, 'did not')
+    .replace(/cant/g, 'can not')
+    .replace(/wont/g, 'will not')
+    .replace(/isnt/g, 'is not')
+    .replace(/arent/g, 'are not')
+    .replace(/ur/g, 'your')
+    .replace(/u/g, 'you')
+    .replace(/r/g, 'are')
+    .replace(/\bu\b/g, 'you')
+    .replace(/\bur\b/g, 'your')
+    .replace(/\br\b/g, 'are')
+    .replace(/\btell\s+abt\b/g, 'tell about')
+    .replace(/\babt\b/g, 'about')
+    .replace(/\bpls\b/g, 'please')
+    .replace(/\bplz\b/g, 'please')
+    .replace(/\bthnks\b/g, 'thanks')
+    .replace(/\bthnx\b/g, 'thanks')
+    .replace(/\bskls\b/g, 'skills')
+    .replace(/\bprjct\b/g, 'project')
+    .replace(/\bprjcts\b/g, 'projects')
+    .replace(/\bstd\b/g, 'standard')
+    .replace(/\bstndrd\b/g, 'standard')
+    .replace(/\bclg\b/g, 'college')
+    .replace(/\buniv\b/g, 'university')
+    .replace(/\bexp\b/g, 'experience')
+    .replace(/\bcert\b/g, 'certification')
+    .replace(/\bcerts\b/g, 'certifications');
+}
+
+function calculateSimilarity(text1: string, text2: string): number {
+  const words1 = text1.split(' ').filter(w => w.length > 0);
+  const words2 = text2.split(' ').filter(w => w.length > 0);
+
+  let matches = 0;
+  for (const word1 of words1) {
+    for (const word2 of words2) {
+      if (word1 === word2 || word1.includes(word2) || word2.includes(word1)) {
+        matches++;
+        break;
+      }
+    }
+  }
+
+  return matches / Math.max(words1.length, words2.length);
+}
+
 export function findBestMatch(query: string): string {
-  const normalizedQuery = query.toLowerCase().trim();
+  const normalizedQuery = normalizeText(query);
+
+  let bestMatch: KnowledgeItem | null = null;
+  let bestScore = 0;
 
   for (const item of knowledgeBase) {
     for (const pattern of item.patterns) {
-      if (normalizedQuery.includes(pattern.toLowerCase())) {
+      const normalizedPattern = normalizeText(pattern);
+
+      if (normalizedQuery.includes(normalizedPattern) || normalizedPattern.includes(normalizedQuery)) {
         return item.response;
       }
+
+      const similarity = calculateSimilarity(normalizedQuery, normalizedPattern);
+      if (similarity > bestScore && similarity > 0.4) {
+        bestScore = similarity;
+        bestMatch = item;
+      }
     }
+  }
+
+  if (bestMatch && bestScore > 0.4) {
+    return bestMatch.response;
   }
 
   return defaultResponse;
